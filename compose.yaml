@@ -1,0 +1,68 @@
+x-app: &app
+  build: .
+  image: patchpilot-app:local
+
+x-db-env: &db-env
+  PATCHPILOT_DATABASE_URL: mysql+pymysql://patchpilot:${PATCHPILOT_DB_PASSWORD:?set in .env}@mysql/patchpilot
+  PATCHPILOT_API_TOKEN: ${PATCHPILOT_API_TOKEN:?set in .env}
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: patchpilot
+      MYSQL_USER: patchpilot
+      MYSQL_PASSWORD: ${PATCHPILOT_DB_PASSWORD:?set in .env}
+      MYSQL_ROOT_PASSWORD: ${PATCHPILOT_ROOT_PASSWORD:?set in .env}
+    volumes:
+      - mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql -h 127.0.0.1 -u \"$$MYSQL_USER\" \"$$MYSQL_DATABASE\" -e 'SELECT 1'"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment: *db-env
+
+  api:
+    <<: *app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment: *db-env
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "patchpilot.worker"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *db-env
+      PATCHPILOT_STATE_DIR: /var/lib/patchpilot
+      PATCHPILOT_EMBEDDING_CACHE: /var/lib/patchpilot/embeddings
+      PATCHPILOT_EMBEDDING_MODEL: ${PATCHPILOT_EMBEDDING_MODEL:-}
+      PATCHPILOT_MODEL_URL: ${PATCHPILOT_MODEL_URL:-http://host.docker.internal:8000/v1}
+      PATCHPILOT_BASE_MODEL: ${PATCHPILOT_BASE_MODEL:-google/gemma-4-31B-it}
+      PATCHPILOT_LORA_MODEL: ${PATCHPILOT_LORA_MODEL:-}
+      PATCHPILOT_MODEL_TOKEN: ${PATCHPILOT_MODEL_TOKEN:-}
+      PATCHPILOT_GITHUB_TOKEN: ${PATCHPILOT_GITHUB_TOKEN:-}
+      PATCHPILOT_SANDBOX_IMAGE: ${PATCHPILOT_SANDBOX_IMAGE:-patchpilot-sandbox:local}
+      PATCHPILOT_SANDBOX_RUNTIME: ${PATCHPILOT_SANDBOX_RUNTIME:-}
+    volumes:
+      - state:/var/lib/patchpilot
+      - ${PATCHPILOT_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+
+volumes:
+  mysql:
+  state:

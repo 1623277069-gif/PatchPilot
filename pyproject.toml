@@ -1,0 +1,39 @@
+[project]
+name = "patchpilot"
+version = "0.1.0"
+description = "Single-agent code repair with a reproducible test and review workflow"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "alembic>=1.16,<2",
+    "cryptography>=46,<49",
+    "faiss-cpu>=1.12,<2",
+    "fastapi>=0.120,<1",
+    "httpx>=0.28,<1",
+    "langchain-core>=1.2.22,<2",
+    "langgraph>=1.0,<2",
+    "langgraph-checkpoint-mysql[pymysql]>=3,<4",
+    "pydantic-settings>=2.10,<3",
+    "sqlalchemy>=2.0,<2.1",
+    "uvicorn>=0.38,<1",
+]
+
+[project.optional-dependencies]
+embedding = ["fastembed>=0.7,<1"]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "ruff>=0.14,<1"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["platform_tests"]
+markers = ["mysql: requires a migrated MySQL 8 test database", "sandbox: requires Docker and the sandbox image"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 105
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]

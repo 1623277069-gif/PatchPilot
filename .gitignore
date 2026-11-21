@@ -89,3 +89,6 @@ build/
 dist/
 *.egg-info/
 .DS_Store
+
+# Versioned local configuration template
+!.env.example

@@ -1,0 +1,13 @@
+**
+!pyproject.toml
+!uv.lock
+!patchpilot/
+!patchpilot/*.py
+!migrations/
+!migrations/env.py
+!migrations/versions/
+!migrations/versions/*.py
+!alembic.ini
+!scripts/
+!scripts/sandbox_entry.py
+!scripts/demo_check.py
