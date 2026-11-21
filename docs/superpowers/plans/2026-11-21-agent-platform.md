@@ -8,8 +8,8 @@
 
 ## Implementation
 
-- [ ] Preserve the frozen `workflows/rs_sft/` tree. Map Base and LoRA selection to the IDs on the local OpenAI-compatible service. Exercise native function calls with an HTTP stub.
-- [ ] Implement `workspace.py`, `sandbox.py` and `graph.py`. Verify relative paths, replay a patch from a clean commit, bound model and test calls, and rehydrate the proposed diff across an approval interrupt.
-- [ ] Implement `rag.py` and versioned code metadata. Reuse AST chunks and their vectors for matching blobs. Check that deletions and changed blobs do not appear in searches of a new snapshot.
-- [ ] Implement migrations, `api.py`, `worker.py` and Compose services. Exercise queue claims, retry, checkpoint recovery, persisted SSE cursors and approval of the reviewed hash.
-- [ ] Run the legacy tests and the public-repository Mock demonstration. Record dependency limits and GPU verification separately. Audit the diff and publish a feature branch to the existing private remote.
+- [x] Preserve the frozen `workflows/rs_sft/` tree. Map Base and LoRA selection to the IDs on the local OpenAI-compatible service. Exercise native function calls with an HTTP stub.
+- [x] Implement `workspace.py`, `sandbox.py` and `graph.py`. Verify relative paths, replay a patch from a clean commit, bound model and test calls, and rehydrate the proposed diff across an approval interrupt.
+- [x] Implement `rag.py` and versioned code metadata. Reuse AST chunks and their vectors for matching blobs. Check that deletions and changed blobs do not appear in searches of a new snapshot.
+- [x] Implement migrations, `api.py`, `worker.py` and Compose services. Exercise queue claims, retry, checkpoint recovery, persisted SSE cursors and approval of the reviewed hash.
+- [x] Run the legacy tests and the public-repository Mock demonstration. Record dependency limits and GPU verification separately. Audit the diff and publish a feature branch to the existing private remote.

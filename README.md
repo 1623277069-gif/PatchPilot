@@ -12,20 +12,20 @@ cp -n .env.example .env
 python3 -c 'import secrets; print("\n".join(secrets.token_hex(24) for _ in range(3)))'
 ```
 
-将生成的三个十六进制字符串分别填入 `.env` 的 `PATCHPILOT_DB_PASSWORD`、`PATCHPILOT_ROOT_PASSWORD` 和 `PATCHPILOT_API_TOKEN`。接着执行：
+将生成的三个十六进制字符串分别填入 `.env` 的 `PATCHPILOT_DB_PASSWORD`、`PATCHPILOT_ROOT_PASSWORD` 和 `PATCHPILOT_API_TOKEN`。接着构建测试镜像并启动服务。
 
 ```sh
 docker build -f Sandbox.Dockerfile -t patchpilot-sandbox:local .
 docker compose up --build -d
 docker compose ps
-uv run python scripts/demo.py --approve
+uv run python -m scripts.demo --approve
 ```
 
 在 [FastAPI 接口文档](http://127.0.0.1:8080/docs) 点击 **Authorize**，输入 `PATCHPILOT_API_TOKEN`。可在 Swagger UI 中逐步导入仓库、提交任务、查看补丁并审批。Compose 将 API 绑定到本机回环地址，MySQL 仅在 Compose 网络内可达。独立 GPU 服务按需接入。
 
 ## 公开演示
 
-演示基于 [PyPA sampleproject 的固定 Commit](https://github.com/pypa/sampleproject/tree/621e4974ca25ce531773def586ba3ed8e736b3fc)。合成需求是为 `add_one` 增加默认参数，同时保留显式传参行为。独立验收脚本检查默认调用和两个显式参数。预期序列为：
+演示基于 [PyPA sampleproject 的固定 Commit](https://github.com/pypa/sampleproject/tree/621e4974ca25ce531773def586ba3ed8e736b3fc)。合成需求是为 `add_one` 增加默认参数，同时保留显式传参行为。独立验收脚本检查默认调用和两个显式参数。演示会依次记录以下结果。
 
 1. 固定的基线测试退出码为 `1`，证明演示需求在基线上未满足。
 2. Mock 依次读取源文件、提交定向编辑、运行同一验收脚本并请求审批。当前补丁应通过测试，退出码为 `0`。

@@ -33,6 +33,9 @@ class Boundary(unittest.TestCase):
         self.assertFalse(Path('/work/.git').exists())
         self.assertEqual(set(socket.if_nameindex()), {(1, 'lo')})
         self.assertEqual(Path('/sys/fs/cgroup/pids.max').read_text().strip(), '64')
+        self.assertEqual(int(Path('/sys/fs/cgroup/memory.max').read_text()), 384 * 1024 * 1024)
+        quota, period = Path('/sys/fs/cgroup/cpu.max').read_text().split()
+        self.assertEqual(int(quota), int(period))
         with self.assertRaises(OSError):
             Path('/opt/sandbox_write_probe').write_text('probe')
         Path('/work/ephemeral').write_text('transient')

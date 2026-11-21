@@ -18,14 +18,14 @@ Worker 将已跟踪文件的 tar 通过标准输入送入一次性 Docker 容器
 
 ## 本地向量检索
 
-默认仅启用关键词检索。开启语义检索时用 FastEmbed 在 CPU 上运行 BGE 模型，下载一次后可离线使用：
+默认仅启用关键词检索。开启语义检索时用 FastEmbed 在 CPU 上运行 BGE 模型，下载一次后可离线使用。
 
 ```sh
 uv sync --frozen --extra embedding
 uv run --extra embedding python -c 'from fastembed import TextEmbedding; m=TextEmbedding("BAAI/bge-small-en-v1.5", cache_dir="data/embeddings"); next(iter(m.embed(["code search"])))'
 ```
 
-原生 Worker 设置 `PATCHPILOT_EMBEDDING_MODEL=BAAI/bge-small-en-v1.5`，默认读取 `data/embeddings`。在 Compose 下，可先将模型下载到 Worker 的持久卷：
+原生 Worker 设置 `PATCHPILOT_EMBEDDING_MODEL=BAAI/bge-small-en-v1.5`，默认读取 `data/embeddings`。在 Compose 下，可先将模型下载到 Worker 的持久卷。
 
 ```sh
 docker compose run --rm worker python -c 'from fastembed import TextEmbedding; m=TextEmbedding("BAAI/bge-small-en-v1.5", cache_dir="/var/lib/patchpilot/embeddings"); next(iter(m.embed(["code search"])))'
@@ -50,7 +50,7 @@ docker compose run --rm worker python -c 'from fastembed import TextEmbedding; m
 
 ### 原生运行
 
-使用 MySQL 8.0.19 或更高版本。创建应用数据库及用户，在 `.env` 设置 `PATCHPILOT_DATABASE_URL=mysql+pymysql://...` 和 `PATCHPILOT_API_TOKEN`。构建同一个 Sandbox 镜像后，在不同终端执行：
+使用 MySQL 8.0.19 或更高版本。创建应用数据库及用户，在 `.env` 设置 `PATCHPILOT_DATABASE_URL=mysql+pymysql://...` 和 `PATCHPILOT_API_TOKEN`。构建同一个 Sandbox 镜像后，在不同终端启动 API 和 Worker。
 
 ```sh
 uv run alembic upgrade head
@@ -62,7 +62,15 @@ uv run python -m patchpilot.worker
 
 使用已有权重启动本机 OpenAI 兼容服务。原生 Worker 连接 `http://127.0.0.1:8000/v1`，容器 Worker 可连接 `http://host.docker.internal:8000/v1`。Linux Docker Engine 若未提供该 hostname，可为 Worker 增加 `extra_hosts: ["host.docker.internal:host-gateway"]` 并在主机侧让服务对 Docker 网桥可达。服务地址由操作员配置。
 
-Gemma 4 vLLM 使用 `gemma4` tool parser、`gemma4` reasoning parser 和 `--enable-auto-tool-choice`。要评估 LoRA，GPU 服务应将兼容的 Adapter 挂载为独立 served ID，例如 `rs_lora`。分别设置 `PATCHPILOT_BASE_MODEL` 与 `PATCHPILOT_LORA_MODEL`。客户端校验 `/v1/models` 存在所选的精确 ID，并使用 OpenAI 原生 function call 协议。用 `scripts/demo.py --mode base` 或 `--mode lora` 提交同一公开例子，检查实际补丁、模型 ID、基线退出码和候选测试结果。
+如果使用原工作流所在的 CUDA/Harness 环境，可直接启动随工作流提供的模型服务。
+
+```sh
+python workflows/rs_sft/serve.py --model-dir /absolute/path/to/gemma-4-31b-it-qat-w4a16-ct
+```
+
+此入口以权重目录的绝对路径作为 Base served ID。若已通过原有 Adapter 准入检查，可追加 `--adapter /absolute/path/to/adapter --adapter-name rs_lora`。需运行在容器外的推理环境中。
+
+Gemma 4 vLLM 使用 `gemma4` tool parser、`gemma4` reasoning parser 和 `--enable-auto-tool-choice`。要评估 LoRA，GPU 服务应将兼容的 Adapter 挂载为独立 served ID，例如 `rs_lora`。分别设置 `PATCHPILOT_BASE_MODEL` 与 `PATCHPILOT_LORA_MODEL`。客户端校验 `/v1/models` 存在所选的精确 ID，并使用 OpenAI 原生 function call 协议。用 `uv run python -m scripts.demo --mode base` 或 `--mode lora` 提交同一公开例子，检查实际补丁、模型 ID、基线退出码和候选测试结果。
 
 `workflows/rs_sft/` 保留原 ADK 单 Agent、官方工具、Harness、轨迹采集、Rejection Sampling、SFT/QLoRA 以及冻结集评估。其 `serve.py` 可作为本地 Gemma 服务入口，具体权重与 LoRA 加载门禁见 [原工作流依赖](dependencies.md)。平台复用同一推理协议和 Base/LoRA serving ID。平台任务使用自己的 Git 重建、工具适配和 Sandbox。比赛采集、轨迹校验及评估仍由原官方 Harness 执行。
 
@@ -77,11 +85,21 @@ uv run python -m unittest discover -s experiments/edit-recovery -q
 uv run python workflows/rs_sft/check_acceptance.py
 ```
 
-安装 `requirements-dev.txt` 中的 pytest 或使用 `uv sync` 的开发依赖可运行 Git/pytest 夹具。使用单独的 MySQL 测试库运行真实迁移、API、Checkpoint 和 FAISS 集成测试。构建 Sandbox 镜像后可同时开启容器集成及公开演示：
+安装 `requirements-dev.txt` 中的 pytest 或使用 `uv sync` 的开发依赖可运行 Git/pytest 夹具。使用单独的 MySQL 测试库运行真实迁移、API、Checkpoint 和 FAISS 集成测试。构建 Sandbox 镜像后可同时开启容器集成及公开演示。
 
 ```sh
 export PATCHPILOT_TEST_DATABASE_URL='mysql+pymysql://test_user:test_password@127.0.0.1/patchpilot_test'
 PATCHPILOT_TEST_DOCKER=1 uv run pytest -q
 ```
+
+若要同时验证本地 BGE 模型，预热模型后将 `PATCHPILOT_TEST_EMBEDDING_CACHE` 指向缓存，并通过 `uv run --extra embedding pytest` 运行。
+
+### 2026-11-21 验证记录
+
+- 平台测试 22 项通过。涵盖 MySQL 8.4.9 迁移、FastAPI、跨 Worker 审批恢复、SSE 游标、失败重试、增量索引，以及本地 BGE 的 384 维向量与 FAISS 混合检索。
+- 使用实际 Docker Sandbox 验证了无外网接口、凭据隔离、只读根文件系统、CPU/内存/进程限制，以及超时终止。
+- 公开 sampleproject 演示通过。原生 FastAPI 与独立 Worker 使用真实 MySQL、真实本地 BGE 和离线测试容器。基线退出码为 1，Mock 经 4 个动作产生候选，候选退出码为 0，审批后为 `succeeded`。测试和审批记录引用同一补丁哈希。
+- Docker Compose 也独立通过演示。MySQL 8.4.13 健康，Alembic 迁移退出码为 0，`/docs` 返回 HTTP 200。候选到达待审批后重启 Worker，审批前后读取到同一份 diff 和 SHA，验收测试执行一次，SSE 返回最终成功事件。
+- 保留工作流与 edit-recovery 的 37 个既有单测、16 个 Git/pytest 夹具通过。Base/LoRA 的原生工具协议由 HTTP stub 验证。真实 Gemma 4 31B 生成、LoRA 实机加载和正式后训练仍待兼容硬件验收。
 
 设计参考包括 [Open SWE 的持久执行与 Sandbox](https://github.com/langchain-ai/open-swe/blob/main/openwiki/architecture/overview.md)、[Aider 的结构化仓库地图](https://aider.chat/2023/10/22/repomap.html)、[BLAgent 的代码片段组织方式](https://github.com/afifaniks/BLAgent)和 [vLLM 的 Gemma 4 配置说明](https://docs.vllm.ai/projects/recipes/en/stable/Google/Gemma4.html)。
