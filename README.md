@@ -17,7 +17,12 @@ python3 -c 'import secrets; print("\n".join(secrets.token_hex(24) for _ in range
 ```sh
 docker build -f Sandbox.Dockerfile -t patchpilot-sandbox:local .
 docker compose up --build -d
-docker compose ps
+curl -fsS http://127.0.0.1:8080/health
+```
+
+API 健康检查通过后，提交并审批公开演示任务。
+
+```sh
 uv run python -m scripts.demo --approve
 ```
 
@@ -55,14 +60,13 @@ flowchart LR
 
 | 路径 | 内容 |
 | --- | --- |
-| `patchpilot/model.py` | Mock 与本地 OpenAI 兼容 Gemma 客户端。用精确的 served ID 选择 Base 或 LoRA |
+| `patchpilot/model.py` | Mock 与本地 OpenAI 兼容 Gemma 客户端 |
 | `patchpilot/graph.py`、`workspace.py` | 单 Agent StateGraph、动作预算、Git Commit 固定、工作区重建与审批 |
 | `patchpilot/rag.py` | Python AST 符号及其他文本语言的行片段，LangChain Document、关键词检索、可选本地向量及 FAISS |
 | `patchpilot/api.py`、`worker.py` | 带 Bearer 认证的 FastAPI、异步队列、SSE、Worker 互斥、重试与持久恢复 |
 | `patchpilot/sandbox.py`、`Sandbox.Dockerfile` | 无网络、无宿主挂载的临时 Python 测试容器 |
 | `migrations/`、`compose.yaml` | MySQL 8.4、Alembic 迁移、本地 API 与 Worker |
-| `workflows/rs_sft/` | 原 Google ADK 配置、官方工具及 Harness、轨迹记录、拒绝采样、SFT/QLoRA、Base/LoRA 评估 |
-| `experiments/` | [历史脱敏实验记录](experiments/README.md)与独立的 edit-recovery 实验 |
+| `integrations/adk/` | 供官方 Harness 使用的 Google ADK Agent 配置与工具验收夹具 |
 | `platform_tests/`、`scripts/` | 平台单元测试、MySQL 接口与恢复集成测试、容器隔离测试及公开仓库演示 |
 
 ## API
@@ -77,4 +81,4 @@ flowchart LR
 | `POST /jobs/{id}/approval` | 提交布尔值 `approve` 和当前 `patch_sha` |
 | `POST /jobs/{id}/retry` | 将失败任务重新入队，从同一持久状态重试 |
 
-[平台配置、表结构与运行说明](docs/platform.md) · [原 ADK 与后训练依赖](docs/dependencies.md)
+[平台配置、表结构与运行说明](docs/platform.md) · [Google ADK 集成](integrations/adk/README.md)
